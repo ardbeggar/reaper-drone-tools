@@ -30,9 +30,9 @@ A companion MIDI filter placed before your lead/piano instrument:
 - Includes matching sliders for `Control MIDI Channel` (Default: `16`), `Capture / Mute CC#` (Default: `102`), and `Capture Button Mode` (`Momentary` or `Toggle / Trigger`).
 
 ### 3. Track & Project Templates
-- **`TrackTemplates/Drone + Piano (Folder).RTrackTemplate`:** A pre-routed 3-track folder (`Drone + Instrument Rig` parent bus + `Synth Drone` + `Piano`) with both child tracks Record-Armed and Input Monitoring enabled.
-- **`TrackTemplates/Drone + Instrument Slot (Folder).RTrackTemplate`:** The same folder structure with an empty instrument slot after `Drone_Capture_Mute` so you can load any synth or sampler.
-- **`ProjectTemplates/Live Jam - Drone & Instrument.RPP`:** Startup-ready project template preloaded with the folder rig.
+- **`TrackTemplates/Drone+Piano (Folder).RTrackTemplate`:** A pre-routed 3-track folder (`Drone + Instrument Rig` parent bus + `Synth Drone` + `Piano`) with both child tracks Record-Armed and Input Monitoring enabled.
+- **`TrackTemplates/Drone+Instrument (Folder).RTrackTemplate`:** The same folder structure with an empty instrument slot after `Drone_Capture_Mute` so you can load any synth or sampler.
+- **`ProjectTemplates/Live Jam - Drone+Piano.RPP`:** Startup-ready project template preloaded with the folder rig.
 
 ---
 
@@ -42,14 +42,14 @@ A companion MIDI filter placed before your lead/piano instrument:
 1. In REAPER, open **Extensions > ReaPack > Import repositories...**
 2. Paste the repository index URL:
    ```text
-   https://githubusercontent.com<YOUR_GITHUB_USERNAME>/<YOUR_REPO_NAME>/main/index.xml
+   https://githubusercontent.com/ardbeggar/reaper-drone-tools/main/index.xml
    ```
 3. Open **Extensions > ReaPack > Browse packages...**, search for `Drone`, select the JSFX effects and templates you want, and click **Apply**.
 
 ### Option 2: Manual / Symlink Installation (Linux)
 1. Clone this repository:
    ```bash
-   git clone https://github.com<YOUR_GITHUB_USERNAME>/<YOUR_REPO_NAME>.git ~/projects/reaper-drone-tools
+   git clone https://github.com/ardbeggar/reaper-drone-tools.git ~/projects/reaper-drone-tools
    cd ~/projects/reaper-drone-tools
    ```
 2. Run the symlink installer to link the JSFX plugins and templates into `~/.config/REAPER/`:
