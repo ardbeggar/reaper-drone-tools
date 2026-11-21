@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<index version="1" name="Live Drone &amp; Instrument Latch Tools" commit="main">
+  <category name="Effects">
+    <reapack name="Poly_Chord_Latch" type="effect" desc="Polyphonic Chord Latch">
+      <metadata>
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}}
+\f0\fs22 Polyphonic MIDI chord latcher with momentary/toggle chord capture, panic kill switch, and live note-name readout.\par
+\par
+Developed collaboratively with Google Gemini.\par
+}]]></description>
+      </metadata>
+      <version name="1.0.0" author="Oleg Belozerov" time="2026-11-22T00:00:00Z">
+        <source>https://githubusercontent.com/ardbeggar/reaper-drone-tools/main/Effects/Poly_Chord_Latch</source>
+      </version>
+    </reapack>
+
+    <reapack name="Drone_Capture_Mute" type="effect" desc="Drone Capture Mute (Instrument Companion)">
+      <metadata>
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}}
+\f0\fs22 Companion MIDI filter that mutes incoming Note On messages on your lead/piano track while capturing a new drone chord.\par
+\par
+Developed collaboratively with Google Gemini.\par
+}]]></description>
+      </metadata>
+      <version name="1.0.0" author="Oleg Belozerov" time="2026-11-22T00:00:00Z">
+        <source>https://githubusercontent.com/ardbeggar/reaper-drone-tools/main/Effects/Drone_Capture_Mute</source>
+      </version>
+    </reapack>
+  </category>
+
+  <category name="Templates">
+    <reapack name="Drone+Piano (Folder).RTrackTemplate" type="template" desc="Drone + Piano (Folder Track Template)">
+      <version name="1.0.0" author="Oleg Belozerov" time="2026-11-22T00:00:00Z">
+        <source file="TrackTemplates/Drone+Piano (Folder).RTrackTemplate">https://githubusercontent.com/ardbeggar/reaper-drone-tools/main/TrackTemplates/Drone%2BPiano%20(Folder).RTrackTemplate</source>
+      </version>
+    </reapack>
+
+    <reapack name="Drone+Instrument (Folder).RTrackTemplate" type="template" desc="Drone + Instrument Slot (Folder Track Template)">
+      <version name="1.0.0" author="Oleg Belozerov" time="2026-11-22T00:00:00Z">
+        <source file="TrackTemplates/Drone+Instrument (Folder).RTrackTemplate">https://githubusercontent.com/ardbeggar/reaper-drone-tools/main/TrackTemplates/Drone%2BInstrument%20(Folder).RTrackTemplate</source>
+      </version>
+    </reapack>
+
+    <reapack name="Live Jam - Drone+Piano.RPP" type="template" desc="Live Jam - Drone+Piano (Project Template)">
+      <version name="1.0.0" author="Oleg Belozerov" time="2026-11-22T00:00:00Z">
+        <source file="ProjectTemplates/Live Jam - Drone+Piano.RPP">https://githubusercontent.com/ardbeggar/reaper-drone-tools/main/ProjectTemplates/Live%20Jam%20-%20Drone%2BPiano.RPP</source>
+      </version>
+    </reapack>
+  </category>
+</index>

@@ -36,11 +36,20 @@ A companion MIDI filter placed before your lead/piano instrument:
 
 ---
 
-## Installation (Linux)
+## Installation
 
+### Option 1: Via ReaPack (Recommended — All Platforms)
+1. In REAPER, open **Extensions > ReaPack > Import repositories...**
+2. Paste the repository index URL:
+   ```text
+   https://githubusercontent.com<YOUR_GITHUB_USERNAME>/<YOUR_REPO_NAME>/main/index.xml
+   ```
+3. Open **Extensions > ReaPack > Browse packages...**, search for `Drone`, select the JSFX effects and templates you want, and click **Apply**.
+
+### Option 2: Manual / Symlink Installation (Linux)
 1. Clone this repository:
    ```bash
-   git clone <your-repo-url> ~/projects/reaper-drone-tools
+   git clone https://github.com<YOUR_GITHUB_USERNAME>/<YOUR_REPO_NAME>.git ~/projects/reaper-drone-tools
    cd ~/projects/reaper-drone-tools
    ```
 2. Run the symlink installer to link the JSFX plugins and templates into `~/.config/REAPER/`:
