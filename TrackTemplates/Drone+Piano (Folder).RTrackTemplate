@@ -50,14 +50,15 @@
   MIDIOUT -1 -1
   MAINSEND 1 0
   <FXCHAIN
-    WNDRECT 511 283 887 193
-    SHOW 0
+    WNDRECT 444 92 887 306
+    SHOW 1
     LASTSEL 0
     DOCKED 0
     BYPASS 0 0 0
     <JS Poly_Chord_Latch ""
-      0 1 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      0 0 16 102 105 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     >
+    JS_DIMS 619 257
     MULTIFXLINK 0
     FLOATPOS 543 315 619 144
     FXID {FB5607AB-1F80-1E3A-1127-8E21C92CA729}
@@ -142,15 +143,15 @@
   MIDIOUT -1 -1
   MAINSEND 1 0
   <FXCHAIN
-    WNDRECT 694 526 887 132
-    SHOW 0
-    LASTSEL 1
+    WNDRECT 694 543 908 252
+    SHOW 1
+    LASTSEL 0
     DOCKED 0
     BYPASS 0 0 0
     <JS Drone_Capture_Mute ""
-      - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      16 102 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     >
-    JS_DIMS 619 83
+    JS_DIMS 640 203
     MULTIFXLINK 0
     FLOATPOS 0 0 0 0
     FXID {3DD571CA-9203-3D1D-4D46-B4D21DE444CB}

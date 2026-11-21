@@ -1,32 +1,71 @@
 desc:Drone Capture Mute (Instrument Companion)
+slider1:16<1,16,1>Control MIDI Channel (1-16)
+slider2:102<0,127,1>Capture / Mute CC#
+slider3:0<0,1,1{Momentary (127 Press / 0 Release),Toggle / Trigger (Any Press above 0)}>Capture Button Mode
 
 in_pin:none
 out_pin:none
 
 @init
 capture_held = 0;
+active_notes = 0;
+chord_started = 0;
 
 @block
+ctrl_ch  = floor(slider1) - 1; // Convert 1-16 to 0-indexed (15 = Ch 16)
+cap_cc   = floor(slider2);
+btn_mode = floor(slider3);
+
 while (midirecv(offset, msg1, msg2, msg3)) (
   status = msg1 & $xF0;
-  channel = msg1 & $x0F; // 0-indexed (15 = MIDI Channel 16)
+  channel = msg1 & $x0F;
 
-  // Listen for Channel 16 (15), CC# 102
-  (status == $xB0 && channel == 15 && msg2 == 102) ? (
-    msg3 == 127 ? (
-      capture_held = 1;
-    ) : msg3 == 0 ? (
-      capture_held = 0;
+  // Listen for configured Control Channel and Capture CC#
+  (status == $xB0 && channel == ctrl_ch && msg2 == cap_cc) ? (
+    btn_mode == 0 ? (
+      // Mode 0: Momentary (127 Press / 0 Release)
+      msg3 >= 64 ? (
+        capture_held = 1;
+        chord_started = 0;
+        active_notes = 0;
+      ) : (
+        capture_held = 0;
+        chord_started = 0;
+        active_notes = 0;
+      );
+    ) : (
+      // Mode 1: Toggle / Trigger (Any Press > 0)
+      msg3 > 0 ? (
+        capture_held = !capture_held;
+        chord_started = 0;
+        active_notes = 0;
+      );
     );
-    // Swallow CC 102 so it doesn't interfere with the instrument VST
   ) :
-  // Block new Note On messages while CC 102 is held down
+  // Note On (velocity > 0)
   (status == $x90 && msg3 > 0) ? (
-    !capture_held ? (
+    capture_held ? (
+      chord_started = 1;
+      active_notes += 1;
+      // Mute Note On while capturing drone
+    ) : (
       midisend(offset, msg1, msg2, msg3);
     );
+  ) :
+  // Note Off (or Note On with velocity 0)
+  (status == $x80 || (status == $x90 && msg3 == 0)) ? (
+    capture_held && chord_started ? (
+      active_notes = max(0, active_notes - 1);
+      // In Mode 1, unmute automatically as soon as the drone chord keys are lifted
+      btn_mode == 1 && active_notes == 0 ? (
+        capture_held = 0;
+        chord_started = 0;
+      );
+    );
+    // Always pass Note Off through so previously held notes never stick
+    midisend(offset, msg1, msg2, msg3);
   ) : (
-    // Always pass Note Offs, Sustain Pedal (CC 64), and everything else
+    // Pass Sustain Pedal (CC 64), Pitch Bend, and all other MIDI messages
     midisend(offset, msg1, msg2, msg3);
   );
 );
@@ -47,4 +86,3 @@ gfx_measurestr(lbl, str_w, str_h);
 gfx_x = (gfx_w - str_w) / 2;
 gfx_y = (gfx_h - str_h) / 2;
 gfx_drawstr(lbl);
-

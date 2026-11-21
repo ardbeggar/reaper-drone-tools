@@ -9,17 +9,25 @@ A lightweight JSFX utility suite and REAPER template pack for live improvisation
 ## What's Included
 
 ### 1. `Effects/Poly_Chord_Latch`
-A polyphonic MIDI note-latching JSFX with a custom `@gfx` status display and clickable controls:
+A polyphonic MIDI note-latching JSFX with a custom `@gfx` status display, clickable UI buttons, and configurable MIDI controls:
 - **Infinite Polyphonic Hold:** Intercepts and blocks `Note Off` messages so chords sustain indefinitely (even when REAPER's transport is stopped).
-- **Momentary Chord Capture (`Ch 16, CC 102 = 127`):** Holding CC 102 enters `CAPTURE: READY`, clears the previous drone on the first new note-on, and automatically locks the new chord (`DRONE LOCKED`) once keys or CC 102 are released.
-- **Quick Tap Toggle (`Ch 16, CC 102` tap `127 -> 0` with no notes):** Toggles between `DRONE LOCKED` and `LATCH: BYPASS` (silencing held notes when bypassed).
-- **Kill / Panic (`Ch 16, CC 105 > 0`):** Immediately sends channel-matched `Note Off` messages and `CC 123` (All Notes Off) across all 16 channels.
-- **Live Readout:** Displays the exact note names and octaves of all currently latched notes in pitch order.
+- **Momentary or Toggle/Trigger Chord Capture:** Arms `CAPTURE: READY`, clears the previous drone on the first new note-on, and automatically locks the new chord (`DRONE LOCKED`) once keys or the capture CC are released.
+- **Quick Tap Bypass Toggle:** Tapping the capture CC without playing any notes toggles between `DRONE LOCKED` and `LATCH: BYPASS` (silencing held notes when bypassed).
+- **Kill / Panic:** Immediately sends channel-matched `Note Off` messages and `CC 123` (All Notes Off) across all 16 channels.
+- **Live Note Readout:** Displays the exact note names and octaves of all currently latched notes in pitch order.
+- **Configurable Parameters (Sliders):**
+  - `Control MIDI Channel` (Default: `16`)
+  - `Capture / Toggle CC#` (Default: `102`)
+  - `Kill / Panic CC#` (Default: `105`)
+  - `Capture Button Mode`:
+    - `Momentary (127 Press / 0 Release)` *(Default)* — Hold button (`>= 64`) to enter capture mode; release (`< 64`) to lock chord (or toggle bypass on a quick tap with no notes).
+    - `Toggle / Trigger (Any Press above 0)` — For toggle footswitches or trigger-only pads. Press once (`> 0`) to arm capture; playing and releasing a chord automatically locks it. Pressing again while still in capture mode (with no notes played) toggles bypass.
 
 ### 2. `Effects/Drone_Capture_Mute`
 A companion MIDI filter placed before your lead/piano instrument:
-- Blocks incoming `Note On` messages while `Ch 16, CC 102` is held down (`127`), allowing you to enter new drone chords silently without triggering notes on your lead instrument.
+- Blocks incoming `Note On` messages while drone capture is active, allowing you to enter new drone chords silently without triggering notes on your lead instrument.
 - Always passes `Note Off` messages, Sustain Pedal (`CC 64`), and pitch bend so active notes never stick.
+- Includes matching sliders for `Control MIDI Channel` (Default: `16`), `Capture / Mute CC#` (Default: `102`), and `Capture Button Mode` (`Momentary` or `Toggle / Trigger`).
 
 ### 3. Track & Project Templates
 - **`TrackTemplates/Drone + Piano (Folder).RTrackTemplate`:** A pre-routed 3-track folder (`Drone + Instrument Rig` parent bus + `Synth Drone` + `Piano`) with both child tracks Record-Armed and Input Monitoring enabled.
@@ -46,19 +54,22 @@ A companion MIDI filter placed before your lead/piano instrument:
 
 ---
 
-## MIDI Setup & Controls
+## MIDI Setup & Default Controls
 
 Set both the **Synth Drone** track and your **Piano / Instrument** track to:
 - **Record Arm:** `ON`
 - **Input Monitoring:** `ON`
 - **MIDI Input:** `All MIDI Inputs > All Channels`
 
-| MIDI Message | Action |
-| :--- | :--- |
-| **Ch 16, CC 102 = 127 (Hold)** | Arms `CAPTURE: READY` on Drone; mutes `Note On` on Instrument |
-| **Ch 16, CC 102 = 0 (After playing chord)** | Locks new chord (`DRONE LOCKED`); unmutes Instrument |
-| **Ch 16, CC 102 = 127 -> 0 (Quick tap, no notes)** | Toggles between `DRONE LOCKED` and `LATCH: BYPASS` |
-| **Ch 16, CC 105 > 0** | **Kill / Panic** — releases all latched drone notes immediately |
+*(If your controller uses a different MIDI channel, CC numbers, or toggle-style buttons, adjust the sliders on both `Poly_Chord_Latch` and `Drone_Capture_Mute` to match.)*
+
+| Default MIDI Message | Mode | Action |
+| :--- | :--- | :--- |
+| **Ch 16, CC 102 >= 64 (Hold)** | `Momentary` | Arms `CAPTURE: READY` on Drone; mutes `Note On` on Instrument |
+| **Ch 16, CC 102 < 64 (Release)** | `Momentary` | Locks new chord (`DRONE LOCKED`); unmutes Instrument |
+| **Ch 16, CC 102 (Quick tap, no notes)** | `Momentary` | Toggles between `DRONE LOCKED` and `LATCH: BYPASS` |
+| **Ch 16, CC 102 > 0 (Press)** | `Toggle / Trigger` | Arms `CAPTURE: READY` & mutes Instrument (auto-locks & unmutes once chord keys are released) |
+| **Ch 16, CC 105 > 0** | `Both` | **Kill / Panic** — releases all latched drone notes immediately |
 
 ---
 

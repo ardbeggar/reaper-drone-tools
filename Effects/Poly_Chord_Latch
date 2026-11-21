@@ -1,6 +1,10 @@
 desc:Polyphonic Chord Latch
 slider1:0<0,1,0.01>-Kill / Panic
 slider2:1<0,2,1{Bypass (Drone Off),Drone Locked (Play Piano),Capture: Ready}>-State
+slider3:16<1,16,1>Control MIDI Channel (1-16)
+slider4:102<0,127,1>Capture / Toggle CC#
+slider5:105<0,127,1>Kill / Panic CC#
+slider6:0<0,1,1{Momentary (127 Press / 0 Release),Toggle / Trigger (Any Press above 0)}>Capture Button Mode
 
 in_pin:none
 out_pin:none
@@ -33,6 +37,11 @@ note_names[10] = "A#";
 note_names[11] = "B";
 
 @block
+ctrl_ch  = floor(slider3) - 1; // Convert 1-16 to 0-indexed (15 = Ch 16)
+cap_cc   = floor(slider4);
+kill_cc  = floor(slider5);
+btn_mode = floor(slider6);
+
 // Check if Kill slider was triggered
 slider1 > 0.1 && kill_visual_timer == 0 ? (
   kill_triggered = 1;
@@ -59,10 +68,10 @@ prev_state = slider2;
 // Process incoming MIDI
 while (midirecv(offset, msg1, msg2, msg3)) (
   status = msg1 & $xF0;
-  channel = msg1 & $x0F; // 0-indexed (15 = MIDI Channel 16)
+  channel = msg1 & $x0F;
 
-  // 1. Kill Trigger: Channel 16 (15), CC# 105, Value > 0
-  (status == $xB0 && channel == 15 && msg2 == 105) ? (
+  // 1. Kill Trigger (works identically on any >0 value regardless of button type)
+  (status == $xB0 && channel == ctrl_ch && msg2 == kill_cc) ? (
     msg3 > 0 ? (
       kill_triggered = 1;
       slider1 = 1;
@@ -70,26 +79,44 @@ while (midirecv(offset, msg1, msg2, msg3)) (
       kill_visual_timer = ceil(srate * 0.15 / samplesblock);
     );
   ) :
-  // 2. Capture / Toggle Trigger: Channel 16 (15), CC# 102
-  (status == $xB0 && channel == 15 && msg2 == 102) ? (
-    msg3 == 127 ? (
-      // Press (127): Enter CAPTURE: READY (2)
-      slider2 = 2;
-      chord_started = 0;
-      sliderchange(slider2);
-      prev_state = slider2;
-    ) : msg3 == 0 ? (
-      // Release (0):
-      slider2 == 2 ? (
-        chord_started ? (
-          // A new chord was played while holding -> Lock it! (1)
-          slider2 = 1;
+  // 2. Capture / Toggle Trigger
+  (status == $xB0 && channel == ctrl_ch && msg2 == cap_cc) ? (
+    btn_mode == 0 ? (
+      // --- MODE 0: MOMENTARY (127 Press / 0 Release) ---
+      msg3 >= 64 ? (
+        slider2 = 2;
+        chord_started = 0;
+        sliderchange(slider2);
+        prev_state = slider2;
+      ) : (
+        slider2 == 2 ? (
+          chord_started ? (
+            slider2 = 1;
+            chord_started = 0;
+          ) : (
+            latched_note_count > 0 ? (
+              slider2 = 0;
+              kill_triggered = 1;
+            ) : (
+              slider2 = 1;
+            );
+          );
+          sliderchange(slider2);
+          prev_state = slider2;
+        );
+      );
+    ) : (
+      // --- MODE 1: TOGGLE / TRIGGER (Any Press > 0) ---
+      msg3 > 0 ? (
+        slider2 != 2 ? (
+          // First press: enter CAPTURE: READY
+          slider2 = 2;
           chord_started = 0;
         ) : (
-          // No notes were played (quick tap) -> Toggle between Locked (1) and Bypass (0)
+          // Second press while still in CAPTURE: READY (no notes played): toggle Locked <-> Bypass
           latched_note_count > 0 ? (
             slider2 = 0;
-            kill_triggered = 1; // Silence drone when switching to Bypass
+            kill_triggered = 1;
           ) : (
             slider2 = 1;
           );
@@ -102,7 +129,6 @@ while (midirecv(offset, msg1, msg2, msg3)) (
   // 3. Note On (velocity > 0)
   (status == $x90 && msg3 > 0) ? (
     slider2 == 2 ? (
-      // CAPTURE: READY -> Clear old drone on the first key of the new chord
       !chord_started ? (
         i = 0;
         loop(128,
@@ -122,12 +148,12 @@ while (midirecv(offset, msg1, msg2, msg3)) (
       active_count += 1;
       midisend(offset, msg1, msg2, msg3);
     );
-  ) : 
+  ) :
   // 4. Note Off (or Note On with velocity 0)
   (status == $x80 || (status == $x90 && msg3 == 0)) ? (
     slider2 == 2 && chord_started ? (
       active_count = max(0, active_count - 1);
-      // If you lift your fingers off the chord BEFORE releasing CC 102, auto-lock immediately!
+      // Auto-lock as soon as all fingers lift off the chord (works in BOTH modes!)
       active_count == 0 ? (
         slider2 = 1;
         chord_started = 0;
@@ -135,7 +161,6 @@ while (midirecv(offset, msg1, msg2, msg3)) (
         prev_state = slider2;
       );
     );
-    // Block all Note Offs so the latched drone keeps ringing
   ) : (
     // 5. Pass all other MIDI messages through
     midisend(offset, msg1, msg2, msg3);
@@ -164,7 +189,6 @@ kill_triggered ? (
 );
 
 @gfx 400 115
-// Background
 gfx_r = 0.13; gfx_g = 0.14; gfx_b = 0.16; gfx_a = 1.0;
 gfx_rect(0, 0, gfx_w, gfx_h);
 
@@ -174,7 +198,6 @@ btn_w = (gfx_w - pad * 2 - gap) / 2;
 btn_h = gfx_h - pad * 2 - 26;
 btn_y = pad;
 
-// Detect single left-click edge
 clicked = (mouse_cap & 1) && !(last_mouse_cap & 1);
 last_mouse_cap = mouse_cap;
 
@@ -182,7 +205,6 @@ last_mouse_cap = mouse_cap;
 b1_x = pad;
 hover1 = mouse_x >= b1_x && mouse_x <= b1_x + btn_w && mouse_y >= btn_y && mouse_y <= btn_y + btn_h;
 
-// Mouse click cycles: Locked (1) -> Ready (2) -> Bypass (0) -> Locked (1)
 clicked && hover1 ? (
   slider2 == 1 ? (
     slider2 = 2;
@@ -198,19 +220,16 @@ clicked && hover1 ? (
 );
 
 slider2 == 2 ? (
-  // CAPTURE: READY (Amber/Gold)
   gfx_r = hover1 ? 0.88 : 0.78;
   gfx_g = hover1 ? 0.58 : 0.48;
   gfx_b = hover1 ? 0.15 : 0.10;
   lbl1 = "CAPTURE: READY";
 ) : slider2 == 1 ? (
-  // DRONE LOCKED (Teal/Green)
   gfx_r = hover1 ? 0.18 : 0.13;
   gfx_g = hover1 ? 0.68 : 0.58;
   gfx_b = hover1 ? 0.48 : 0.40;
   lbl1 = "DRONE LOCKED";
 ) : (
-  // BYPASS (Neutral Slate)
   gfx_r = hover1 ? 0.32 : 0.25;
   gfx_g = hover1 ? 0.34 : 0.27;
   gfx_b = hover1 ? 0.38 : 0.30;
@@ -273,4 +292,3 @@ latched_note_count == 0 ? (
     i += 1;
   );
 );
-
