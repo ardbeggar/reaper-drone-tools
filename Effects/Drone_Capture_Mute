@@ -1,0 +1,50 @@
+desc:Drone Capture Mute (Instrument Companion)
+
+in_pin:none
+out_pin:none
+
+@init
+capture_held = 0;
+
+@block
+while (midirecv(offset, msg1, msg2, msg3)) (
+  status = msg1 & $xF0;
+  channel = msg1 & $x0F; // 0-indexed (15 = MIDI Channel 16)
+
+  // Listen for Channel 16 (15), CC# 102
+  (status == $xB0 && channel == 15 && msg2 == 102) ? (
+    msg3 == 127 ? (
+      capture_held = 1;
+    ) : msg3 == 0 ? (
+      capture_held = 0;
+    );
+    // Swallow CC 102 so it doesn't interfere with the instrument VST
+  ) :
+  // Block new Note On messages while CC 102 is held down
+  (status == $x90 && msg3 > 0) ? (
+    !capture_held ? (
+      midisend(offset, msg1, msg2, msg3);
+    );
+  ) : (
+    // Always pass Note Offs, Sustain Pedal (CC 64), and everything else
+    midisend(offset, msg1, msg2, msg3);
+  );
+);
+
+@gfx 280 44
+capture_held ? (
+  gfx_r = 0.78; gfx_g = 0.48; gfx_b = 0.10;
+  lbl = "INSTRUMENT MUTED (CAPTURING DRONE)";
+) : (
+  gfx_r = 0.16; gfx_g = 0.40; gfx_b = 0.36;
+  lbl = "INSTRUMENT ACTIVE";
+);
+gfx_rect(0, 0, gfx_w, gfx_h);
+
+gfx_setfont(1, "Sans", 13, 'b');
+gfx_r = 1; gfx_g = 1; gfx_b = 1;
+gfx_measurestr(lbl, str_w, str_h);
+gfx_x = (gfx_w - str_w) / 2;
+gfx_y = (gfx_h - str_h) / 2;
+gfx_drawstr(lbl);
+

@@ -1,0 +1,276 @@
+desc:Polyphonic Chord Latch
+slider1:0<0,1,0.01>-Kill / Panic
+slider2:1<0,2,1{Bypass (Drone Off),Drone Locked (Play Piano),Capture: Ready}>-State
+
+in_pin:none
+out_pin:none
+
+@init
+held_notes = 0;       // memory 0..127
+held_channels = 128;  // memory 128..255
+note_names = 256;     // memory 256..267
+
+active_count = 0;
+latched_note_count = 0;
+kill_triggered = 0;
+kill_visual_timer = 0;
+last_mouse_cap = 0;
+chord_started = 0;
+prev_state = 1;
+
+// Note names
+note_names[0]  = "C";
+note_names[1]  = "C#";
+note_names[2]  = "D";
+note_names[3]  = "D#";
+note_names[4]  = "E";
+note_names[5]  = "F";
+note_names[6]  = "F#";
+note_names[7]  = "G";
+note_names[8]  = "G#";
+note_names[9]  = "A";
+note_names[10] = "A#";
+note_names[11] = "B";
+
+@block
+// Check if Kill slider was triggered
+slider1 > 0.1 && kill_visual_timer == 0 ? (
+  kill_triggered = 1;
+  slider1 = 1;
+  sliderchange(slider1);
+  kill_visual_timer = ceil(srate * 0.15 / samplesblock);
+);
+
+// Count down visual reset timer
+kill_visual_timer > 0 ? (
+  kill_visual_timer -= 1;
+  kill_visual_timer == 0 ? (
+    slider1 = 0;
+    sliderchange(slider1);
+  );
+);
+
+// Clean up held notes if switched to Bypass (0) via automation/slider
+slider2 == 0 && prev_state != 0 ? (
+  kill_triggered = 1;
+);
+prev_state = slider2;
+
+// Process incoming MIDI
+while (midirecv(offset, msg1, msg2, msg3)) (
+  status = msg1 & $xF0;
+  channel = msg1 & $x0F; // 0-indexed (15 = MIDI Channel 16)
+
+  // 1. Kill Trigger: Channel 16 (15), CC# 105, Value > 0
+  (status == $xB0 && channel == 15 && msg2 == 105) ? (
+    msg3 > 0 ? (
+      kill_triggered = 1;
+      slider1 = 1;
+      sliderchange(slider1);
+      kill_visual_timer = ceil(srate * 0.15 / samplesblock);
+    );
+  ) :
+  // 2. Capture / Toggle Trigger: Channel 16 (15), CC# 102
+  (status == $xB0 && channel == 15 && msg2 == 102) ? (
+    msg3 == 127 ? (
+      // Press (127): Enter CAPTURE: READY (2)
+      slider2 = 2;
+      chord_started = 0;
+      sliderchange(slider2);
+      prev_state = slider2;
+    ) : msg3 == 0 ? (
+      // Release (0):
+      slider2 == 2 ? (
+        chord_started ? (
+          // A new chord was played while holding -> Lock it! (1)
+          slider2 = 1;
+          chord_started = 0;
+        ) : (
+          // No notes were played (quick tap) -> Toggle between Locked (1) and Bypass (0)
+          latched_note_count > 0 ? (
+            slider2 = 0;
+            kill_triggered = 1; // Silence drone when switching to Bypass
+          ) : (
+            slider2 = 1;
+          );
+        );
+        sliderchange(slider2);
+        prev_state = slider2;
+      );
+    );
+  ) :
+  // 3. Note On (velocity > 0)
+  (status == $x90 && msg3 > 0) ? (
+    slider2 == 2 ? (
+      // CAPTURE: READY -> Clear old drone on the first key of the new chord
+      !chord_started ? (
+        i = 0;
+        loop(128,
+          held_notes[i] ? (
+            midisend(offset, $x80 | held_channels[i], i, 0);
+            held_notes[i] = 0;
+          );
+          i += 1;
+        );
+        latched_note_count = 0;
+        active_count = 0;
+        chord_started = 1;
+      );
+      !held_notes[msg2] ? latched_note_count += 1;
+      held_notes[msg2] = 1;
+      held_channels[msg2] = channel;
+      active_count += 1;
+      midisend(offset, msg1, msg2, msg3);
+    );
+  ) : 
+  // 4. Note Off (or Note On with velocity 0)
+  (status == $x80 || (status == $x90 && msg3 == 0)) ? (
+    slider2 == 2 && chord_started ? (
+      active_count = max(0, active_count - 1);
+      // If you lift your fingers off the chord BEFORE releasing CC 102, auto-lock immediately!
+      active_count == 0 ? (
+        slider2 = 1;
+        chord_started = 0;
+        sliderchange(slider2);
+        prev_state = slider2;
+      );
+    );
+    // Block all Note Offs so the latched drone keeps ringing
+  ) : (
+    // 5. Pass all other MIDI messages through
+    midisend(offset, msg1, msg2, msg3);
+  );
+);
+
+// Execute Kill / Panic cleanup
+kill_triggered ? (
+  i = 0;
+  loop(128,
+    held_notes[i] ? (
+      midisend(0, $x80 | held_channels[i], i, 0);
+      held_notes[i] = 0;
+    );
+    i += 1;
+  );
+  ch = 0;
+  loop(16,
+    midisend(0, $xB0 | ch, 123, 0);
+    ch += 1;
+  );
+  active_count = 0;
+  latched_note_count = 0;
+  chord_started = 0;
+  kill_triggered = 0;
+);
+
+@gfx 400 115
+// Background
+gfx_r = 0.13; gfx_g = 0.14; gfx_b = 0.16; gfx_a = 1.0;
+gfx_rect(0, 0, gfx_w, gfx_h);
+
+pad = 12;
+gap = 12;
+btn_w = (gfx_w - pad * 2 - gap) / 2;
+btn_h = gfx_h - pad * 2 - 26;
+btn_y = pad;
+
+// Detect single left-click edge
+clicked = (mouse_cap & 1) && !(last_mouse_cap & 1);
+last_mouse_cap = mouse_cap;
+
+// --- BUTTON 1: STATE / CAPTURE ---
+b1_x = pad;
+hover1 = mouse_x >= b1_x && mouse_x <= b1_x + btn_w && mouse_y >= btn_y && mouse_y <= btn_y + btn_h;
+
+// Mouse click cycles: Locked (1) -> Ready (2) -> Bypass (0) -> Locked (1)
+clicked && hover1 ? (
+  slider2 == 1 ? (
+    slider2 = 2;
+    chord_started = 0;
+  ) : slider2 == 2 ? (
+    slider2 = 0;
+    kill_triggered = 1;
+  ) : (
+    slider2 = 1;
+  );
+  sliderchange(slider2);
+  prev_state = slider2;
+);
+
+slider2 == 2 ? (
+  // CAPTURE: READY (Amber/Gold)
+  gfx_r = hover1 ? 0.88 : 0.78;
+  gfx_g = hover1 ? 0.58 : 0.48;
+  gfx_b = hover1 ? 0.15 : 0.10;
+  lbl1 = "CAPTURE: READY";
+) : slider2 == 1 ? (
+  // DRONE LOCKED (Teal/Green)
+  gfx_r = hover1 ? 0.18 : 0.13;
+  gfx_g = hover1 ? 0.68 : 0.58;
+  gfx_b = hover1 ? 0.48 : 0.40;
+  lbl1 = "DRONE LOCKED";
+) : (
+  // BYPASS (Neutral Slate)
+  gfx_r = hover1 ? 0.32 : 0.25;
+  gfx_g = hover1 ? 0.34 : 0.27;
+  gfx_b = hover1 ? 0.38 : 0.30;
+  lbl1 = "LATCH: BYPASS";
+);
+gfx_rect(b1_x, btn_y, btn_w, btn_h);
+
+gfx_setfont(1, "Sans", 14, 'b');
+gfx_r = 1; gfx_g = 1; gfx_b = 1;
+gfx_measurestr(lbl1, str_w, str_h);
+gfx_x = b1_x + (btn_w - str_w) / 2;
+gfx_y = btn_y + (btn_h - str_h) / 2;
+gfx_drawstr(lbl1);
+
+// --- BUTTON 2: KILL / PANIC ---
+b2_x = pad + btn_w + gap;
+hover2 = mouse_x >= b2_x && mouse_x <= b2_x + btn_w && mouse_y >= btn_y && mouse_y <= btn_y + btn_h;
+
+clicked && hover2 ? (
+  kill_triggered = 1;
+  slider1 = 1;
+  sliderchange(slider1);
+  kill_visual_timer = ceil(srate * 0.15 / samplesblock);
+);
+
+kill_visual_timer > 0 ? (
+  gfx_r = 0.95; gfx_g = 0.35; gfx_b = 0.20;
+) : (
+  gfx_r = hover2 ? 0.82 : 0.68;
+  gfx_g = hover2 ? 0.22 : 0.16;
+  gfx_b = hover2 ? 0.22 : 0.16;
+);
+gfx_rect(b2_x, btn_y, btn_w, btn_h);
+
+gfx_r = 1; gfx_g = 1; gfx_b = 1;
+lbl2 = "KILL / PANIC";
+gfx_measurestr(lbl2, str_w, str_h);
+gfx_x = b2_x + (btn_w - str_w) / 2;
+gfx_y = btn_y + (btn_h - str_h) / 2;
+gfx_drawstr(lbl2);
+
+// --- STATUS FOOTER: HELD NOTE NAMES ---
+gfx_setfont(1, "Sans", 13, 'b');
+gfx_r = 0.82; gfx_g = 0.86; gfx_b = 0.92;
+gfx_x = pad;
+gfx_y = gfx_h - 22;
+
+latched_note_count == 0 ? (
+  gfx_drawstr("Latched: None");
+) : (
+  gfx_drawstr("Latched: ");
+  i = 0;
+  loop(128,
+    held_notes[i] ? (
+      pc = i % 12;
+      oct = floor(i / 12) - 1;
+      gfx_drawstr(note_names[pc]);
+      gfx_printf("%d  ", oct);
+    );
+    i += 1;
+  );
+);
+
